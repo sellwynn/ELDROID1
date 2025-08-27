@@ -6,31 +6,45 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), MainView {
 
-    private lateinit var tempData: TempData
+    private lateinit var presenter: MainPresenter
+    private lateinit var tempText: TextView
+    private lateinit var humidityText: TextView
+    private lateinit var btnFetch: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        tempData = TempData(this)
-
+        // --- UI references ---
         val tvWelcome = findViewById<TextView>(R.id.tvWelcome)
         val btnProfile = findViewById<Button>(R.id.btnProfile)
         val btnSettings = findViewById<Button>(R.id.btnSettings)
         val btnLogout = findViewById<Button>(R.id.btnLogout)
 
-        // show saved name/email
-        val firstName = getSharedPreferences("TempDataPrefs", MODE_PRIVATE)
-            .getString("FIRST_NAME", "")
-        val email = getSharedPreferences("TempDataPrefs", MODE_PRIVATE)
-            .getString("EMAIL", "")
+        tempText = findViewById(R.id.textTemperature)
+        humidityText = findViewById(R.id.textHumidity)
+        btnFetch = findViewById(R.id.btnFetch)
+
+        // --- Load user info from SharedPreferences ---
+        val prefs = getSharedPreferences("TempDataPrefs", MODE_PRIVATE)
+        val firstName = prefs.getString("FIRST_NAME", "")
+        val email = prefs.getString("EMAIL", "")
 
         tvWelcome.text = "Welcome, $firstName!\n($email)"
 
+        // --- Init Presenter for Sensor Data ---
+        presenter = MainPresenter(this)
+        presenter.loadSensorData() // initial load
+
+        // --- Fetch Sensor Data manually ---
+        btnFetch.setOnClickListener {
+            presenter.loadSensorData()
+        }
+
+        // --- Button Handlers ---
         btnProfile.setOnClickListener {
-            // temporary: just show profile data
             tvWelcome.text = "Profile:\nName: $firstName\nEmail: $email"
         }
 
@@ -42,5 +56,15 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
         }
+    }
+
+    // --- MVP Callbacks ---
+    override fun showSensorData(data: SensorData) {
+        tempText.text = "Temperature: ${"%.1f".format(data.temperature)} °C"
+    }
+
+    override fun showError(message: String) {
+        tempText.text = "Error"
+        humidityText.text = message
     }
 }
